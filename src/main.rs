@@ -1,55 +1,63 @@
-use std::{fmt::format, sync::Mutex};
-use actix_web::{App, HttpResponse, HttpServer, Responder, error::HttpError, get, post, web::{self, scope}};
+use crate::config::db::init_db;
+use actix_web::{App, HttpResponse, HttpServer, Responder, post, web};
 use serde::{Deserialize, Serialize};
-struct AppStateWithCounter {
-    counter: Mutex<i32>
+use sqlx::PgPool;
+
+mod config;
+
+#[derive(Deserialize, Debug)]
+struct Signup {
+    username: String,
+    password: String,
 }
 
-#[get("/")]
-async fn hello(data: web::Data<AppStateWithCounter>) ->  String {
-    let mut counter = data.counter.lock().unwrap();
-    *counter += 1;
-    format!("the counter is {counter} ")
+#[derive(Serialize)]
+struct User {
+    id: i32,
+    username: String,
+    password: String,
 }
 
-#[get("/users/{user_id}/{friends}")]
-async fn index(path: web::Path<(u32, String)>) -> Result<String, HttpError> {
-    let (user_id, friend) = path.into_inner();
-    Ok(format!("Welcome {}, user_id {}!", friend, user_id))
+#[derive(Serialize)]
+struct SignupResponse {
+    Status: i32,
+    Responce: String,
 }
 
-#[derive(Serialize, Deserialize)]
-struct Info {
-    name: String,
-}
+#[post("/signup")]
+pub async fn singup(pool: web::Data<PgPool>, data: web::Json<Signup>) -> impl Responder {
+    println!("request from the user {:?}", data.username);
+    println!("user sing up succefully");
 
+    let user = sqlx::query_as!(
+        User,
+        "INSERT INTO users (username, password)
+         VALUES ($1, $2)
+         RETURNING id, username, password",
+        data.username,
+        data.password
+    )
+    .fetch_one(pool.get_ref())
+    .await;
 
-#[post("/user")]
-async fn info(info: web::Json<Info>) -> web::Json<Info> {
-    web::Json(Info {
-        name: info.name.clone()
-    })
+    match user{
+        Ok(u)=>HttpResponse::Ok().json(u),
+        Err(_)=>HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let counter = web::Data::new(AppStateWithCounter {
-                counter: Mutex::new(0),
-    });
+    let pool = init_db().await;
+
     HttpServer::new(move || {
         println!("server is running");
         App::new()
-            .service(
-                web::scope("/api/v1")
-                    .service(hello)
-                    .service(index)
-                    .service(info)
-            )
-            .app_data(counter.clone())
+            .app_data(web::Data::new(pool.clone()))
+            .service(web::scope("/api/v1").service(singup))
     })
     .bind(("127.0.0.1", 8080))?
     .workers(1)
     .run()
     .await
 }
-
