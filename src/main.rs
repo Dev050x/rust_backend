@@ -1,8 +1,9 @@
 use crate::{auth::auth_handlers::{signin, signup}, config::db::init_db};
-use actix_web::{App, HttpServer, web};
+use actix_web::{App, HttpServer, dev::ServiceRequest, web};
 
 mod config;
 mod auth;
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

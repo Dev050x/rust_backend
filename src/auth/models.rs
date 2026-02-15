@@ -18,3 +18,18 @@ pub struct ApiResponse {
     pub status: i32,
     pub message: String,
 }
+
+#[derive(Serialize)]
+pub struct SignInApiRespnse{
+    pub status: i32,
+    pub message: String,
+    pub token : String
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    pub sub: i32,
+    pub username: String,
+    pub exp: u64,
+}
+
