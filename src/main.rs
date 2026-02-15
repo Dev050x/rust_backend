@@ -1,5 +1,5 @@
-use crate::{auth::auth_handlers::{signin, signup}, config::db::init_db};
-use actix_web::{App, HttpServer, dev::ServiceRequest, web};
+use crate::{auth::auth_handlers::{signin, signup, dummy}, config::db::init_db};
+use actix_web::{App, HttpServer, web};
 
 mod config;
 mod auth;
@@ -16,6 +16,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::scope("/api/v1")
                 .service(signup)
                 .service(signin)
+                .service(dummy)
             )
     })
     .bind(("127.0.0.1", 8080))?
